@@ -1,7 +1,6 @@
 import os
 import argparse
 from dotenv import load_dotenv
-
 from modules.data_fetcher import StockDataFetcher
 from modules.technical_analyzer import TechnicalAnalyzer
 from modules.visualizer import Visualizer
@@ -29,12 +28,15 @@ def main():
     
     # 获取股票数据
     print(f"正在获取 {args.stock_code} 的历史数据...")
-    stock_data = data_fetcher.fetch_stock_data(args.stock_code, args.period)
+    # stock_data = data_fetcher.fetch_stock_data(args.stock_code, args.period)
+    stock_data = data_fetcher.fetch_us_stock_data(args.stock_code, args.period)
     
     # 获取财务和新闻数据
     print(f"正在获取 {args.stock_code} 的财务和新闻数据...")
-    financial_data = data_fetcher.fetch_financial_data(args.stock_code)
-    news_data = data_fetcher.fetch_news_data(args.stock_code)
+    # financial_data = data_fetcher.fetch_financial_data(args.stock_code)
+    # news_data = data_fetcher.fetch_news_data(args.stock_code)
+    financial_data = {} # TODO: 暂时不支持美股
+    news_data = data_fetcher.fetch_us_news_data(args.stock_code)
     
     # 计算技术指标
     print("正在计算技术指标...")

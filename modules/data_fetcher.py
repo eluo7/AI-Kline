@@ -3,6 +3,10 @@ import pandas as pd
 from datetime import datetime, timedelta
 import time
 from tqdm import tqdm
+from polygon import RESTClient
+import os
+from dotenv import load_dotenv
+
 
 class StockDataFetcher:
     """
@@ -10,7 +14,10 @@ class StockDataFetcher:
     """
     
     def __init__(self):
-        self.today = datetime.now().strftime('%Y%m%d')
+        # 加载环境变量
+        load_dotenv(override=True)
+        api_key = os.getenv('POLYGON_API_KEY')
+        self.client = RESTClient(api_key)
     
     def fetch_stock_data(self, stock_code, period='1年'):
         """
@@ -49,10 +56,12 @@ class StockDataFetcher:
         else:
             start_date = (datetime.now() - timedelta(days=365)).strftime('%Y%m%d')
         
+        # 计算结束日期
+        end_date = datetime.now().strftime('%Y%m%d')
         try:
             # 使用akshare获取股票历史数据
             stock_data = ak.stock_zh_a_hist(symbol=stock_code, period="daily", 
-                                           start_date=start_date, end_date=self.today, 
+                                           start_date=start_date, end_date=end_date, 
                                            adjust="qfq")
             
             # 重命名列以便后续处理
@@ -149,3 +158,118 @@ class StockDataFetcher:
         except Exception as e:
             print(f"获取新闻数据时出错: {e}")
             return news_list
+    
+    def fetch_us_stock_data(self, stock_code, period='1年'):
+        """
+        获取美股的历史K线数据
+        
+        参数:
+            stock_code (str): 股票代码，如 'AAPL'
+            period (str): 获取数据的时间周期，默认为'1年'
+            
+        返回:
+            pandas.DataFrame: 包含股票历史数据的DataFrame
+        """
+        
+        # 计算开始日期
+        # Polygon要求时间格式为：YYYY-MM-DD 或 millisecond timestamp
+        if period == '1年':
+            start_date = (datetime.now() - timedelta(days=365)).strftime('%Y-%m-%d')
+        elif period == '6个月':
+            start_date = (datetime.now() - timedelta(days=183)).strftime('%Y-%m-%d')
+        elif period == '3个月':
+            start_date = (datetime.now() - timedelta(days=91)).strftime('%Y-%m-%d')
+        elif period == '1个月':
+            start_date = (datetime.now() - timedelta(days=30)).strftime('%Y-%m-%d')
+        else:
+            start_date = (datetime.now() - timedelta(days=365)).strftime('%Y-%m-%d')
+        
+        # 计算结束日期
+        end_date = datetime.now().strftime('%Y-%m-%d')
+
+        try:
+            # 获取股票历史数据 aggs数据类型是generator
+            aggs = self.client.list_aggs(
+                stock_code,
+                1,
+                "day",
+                start_date,
+                end_date,
+                adjusted=True
+            )
+            
+            # 转换为DataFrame
+            if not aggs:
+                print(f"Polygon.io未能获取到 {stock_code} 的数据")
+                return None
+            
+            # 转换为DataFrame
+            data = pd.DataFrame([{
+                'date': 'date',
+                'open': agg.open,
+                'high': agg.high,
+                'low': agg.low,
+                'close': agg.close,
+                'volume': agg.volume,
+                'date': datetime.fromtimestamp(agg.timestamp/1000)
+            } for agg in aggs])
+            
+            return data
+                
+        except Exception as e:
+            print(f"获取美股数据时出错: {e}")
+            return pd.DataFrame()
+    
+    def fetch_us_financial_data(self, stock_code):
+        """
+        获取美股的财务数据
+        
+        参数:
+            stock_code (str): 股票代码，如 'AAPL'
+            
+        返回:
+            dict: 包含财务数据的字典
+        """
+        pass
+
+    def fetch_us_news_data(self, stock_code, max_limit=5):
+        """
+        获取与美股相关的新闻信息
+        
+        参数:
+            stock_code (str): 股票代码，如 'AAPL'
+            max_items (int): 最大获取新闻条数
+            
+        返回:
+            list: 包含新闻数据的列表
+        """
+        
+        news_list = []
+        news_articles = self.client.list_ticker_news(
+            stock_code, 
+            params={"published_utc.gte": (datetime.now() - timedelta(days=1)).strftime('%Y-%m-%d')}, # 获取过去24小时内的新闻
+            order="desc", 
+            limit=max_limit
+            )
+
+        try:
+            # Display the title and insights for each article
+            for _, article in enumerate(news_articles):
+                if _ == 5:
+                    break
+                for _, insight in enumerate(article.insights):
+                    if insight.ticker == stock_code:
+                        news_item = {
+                            'title': article.title,
+                            'date': article.published_utc,
+                            'content': article.description,
+                            'sentiment': insight.sentiment,
+                            'sentiment_reasoning': insight.sentiment_reasoning,
+                        }
+                        news_list.append(news_item)
+            return news_list
+            
+        except Exception as e:
+            print(f"获取美股新闻时出错: {e}")
+            return news_list
+

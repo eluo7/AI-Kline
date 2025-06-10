@@ -40,14 +40,14 @@ def analyze():
     
     try:
         # 获取股票数据
-        stock_data = data_fetcher.fetch_stock_data(stock_code, period)
+        stock_data = data_fetcher.fetch_us_stock_data(stock_code, period)
         
         if stock_data.empty:
             return jsonify({'error': f'未找到股票 {stock_code} 的数据'}), 404
         
         # 获取财务和新闻数据
-        financial_data = data_fetcher.fetch_financial_data(stock_code)
-        news_data = data_fetcher.fetch_news_data(stock_code)
+        financial_data = data_fetcher.fetch_us_financial_data(stock_code)
+        news_data = data_fetcher.fetch_us_news_data(stock_code)
         
         # 计算技术指标
         indicators = technical_analyzer.calculate_indicators(stock_data)
@@ -98,9 +98,10 @@ def get_stock_info(stock_code):
             }
             return jsonify({'success': True, 'data': info_dict})
         else:
-            return jsonify({'error': f'未找到股票 {stock_code} 的信息'}), 404
+            # return jsonify({'error': f'未找到股票 {stock_code} 的信息'}), 404
+            return jsonify({'success': True, 'data': info_dict})
     except Exception as e:
         return jsonify({'error': f'获取股票信息时出错: {str(e)}'}), 500
 
 if __name__ == '__main__':
-    app.run(debug=True, host='0.0.0.0', port=5000) 
+    app.run(debug=True, host='0.0.0.0', port=52013) 

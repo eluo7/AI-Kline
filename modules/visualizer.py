@@ -57,9 +57,10 @@ class Visualizer:
         return chart_dir
     
     def _create_matplotlib_charts(self, stock_data, indicators, stock_code, stock_name, save_path):
-        """
-        使用matplotlib创建图表
-        """
+        import matplotlib
+        matplotlib.use('Agg')  # 使用非交互式后端
+        import matplotlib.pyplot as plt
+        
         # 创建一个大图，包含多个子图
         fig = plt.figure(figsize=(16, 12))
         
@@ -152,6 +153,7 @@ class Visualizer:
         plt.tight_layout()
         
         # 保存图表
+        # 修改保存部分
         plt.savefig(os.path.join(save_path, f"{stock_code}_technical_analysis.png"), dpi=300)
         plt.close()
     
